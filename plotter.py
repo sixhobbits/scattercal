@@ -158,7 +158,7 @@ def _figure_to_png(fig_or_ax, *, use_tight_layout: bool = True) -> bytes:
     buffer = BytesIO()
     if use_tight_layout:
         fig.tight_layout()
-    fig.savefig(buffer, format="png")
+    fig.savefig(buffer, format="png", bbox_inches="tight", pad_inches=0.3)
     buffer.seek(0)
     data = buffer.getvalue()
     plt.close(fig)
