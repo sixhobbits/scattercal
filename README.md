@@ -38,7 +38,7 @@ pip install matplotlib seaborn july
 
 ```python
 from datetime import datetime, timedelta
-from plotter import trend_plot
+from scattercal import trend_plot
 import random
 
 random.seed(42)
@@ -55,7 +55,7 @@ png = trend_plot(dates, values, title="Pullups", goal=10)
 
 ```python
 from datetime import datetime
-from plotter import calendar_heatmap
+from scattercal import calendar_heatmap
 import random
 
 random.seed(7)
@@ -71,7 +71,7 @@ images = calendar_heatmap(dates, values)
 
 ```python
 from datetime import datetime, timedelta
-from plotter import calendar_heatmap
+from scattercal import calendar_heatmap
 import random
 
 random.seed(7)
@@ -88,7 +88,7 @@ images = calendar_heatmap(dates, values, title="Pullups (Q1)")
 
 ```python
 from datetime import datetime, timedelta
-from plotter import calendar_heatmap
+from scattercal import calendar_heatmap
 import random
 
 random.seed(7)
@@ -105,7 +105,7 @@ images = calendar_heatmap(dates, values, title="Pullups (H1)")
 
 ```python
 from datetime import datetime, timedelta
-from plotter import calendar_heatmap
+from scattercal import calendar_heatmap
 import random
 
 random.seed(7)
@@ -125,7 +125,7 @@ When your 12-month window crosses a year boundary (e.g. Jul 2024 - Jun 2025), Sc
 
 ```python
 from datetime import datetime, timedelta
-from plotter import calendar_heatmap
+from scattercal import calendar_heatmap
 import random
 
 random.seed(7)
@@ -144,7 +144,7 @@ images = calendar_heatmap(dates, values, title="Pullups")
 
 ```python
 from datetime import datetime, timedelta
-from plotter import calendar_heatmap
+from scattercal import calendar_heatmap
 import random
 
 random.seed(7)
@@ -162,7 +162,7 @@ images = calendar_heatmap(dates, values, title="Pullups")
 ## CLI
 
 ```bash
-python plotter.py data.json --outdir out
+python scattercal.py data.json --outdir out
 ```
 
 JSON shape:
