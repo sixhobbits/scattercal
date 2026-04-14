@@ -2,11 +2,10 @@ from __future__ import annotations
 
 import argparse
 import json
-from dataclasses import dataclass
 from datetime import datetime
 from io import BytesIO
 from pathlib import Path
-from typing import Iterable
+from typing import Sequence
 
 import july
 import matplotlib
@@ -16,197 +15,115 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 
-@dataclass(frozen=True)
-class MetricPoint:
-    recorded_at: datetime
-    value: float
-
-
-@dataclass(frozen=True)
-class LabeledImage:
-    label: str
-    image_bytes: bytes
-
-
-def _filter_points(
-    points: Iterable[MetricPoint],
+def _filter_by_range(
+    dates: Sequence[datetime],
+    values: Sequence[float],
     start: datetime | None = None,
     end: datetime | None = None,
-) -> list[MetricPoint]:
-    ordered = sorted(points, key=lambda point: point.recorded_at)
+) -> tuple[list[datetime], list[float]]:
+    pairs = sorted(zip(dates, values), key=lambda p: p[0])
     if start is not None:
-        ordered = [p for p in ordered if p.recorded_at >= start]
+        pairs = [(d, v) for d, v in pairs if d >= start]
     if end is not None:
-        ordered = [p for p in ordered if p.recorded_at <= end]
-    return ordered
+        pairs = [(d, v) for d, v in pairs if d <= end]
+    if not pairs:
+        return [], []
+    return [d for d, _ in pairs], [v for _, v in pairs]
 
 
 def trend_plot(
-    metric_name: str,
-    points: Iterable[MetricPoint],
-    goal_value: float | None = None,
-    title: str | None = None,
+    dates: Sequence[datetime],
+    values: Sequence[float],
+    *,
+    title: str = "",
+    goal: float | None = None,
     start: datetime | None = None,
     end: datetime | None = None,
 ) -> bytes:
-    ordered = _filter_points(points, start=start, end=end)
-    if not ordered:
-        raise ValueError("trend_plot requires at least one point")
+    """Scatter plot with regression trendline. Returns PNG bytes."""
+    dates, values = _filter_by_range(dates, values, start, end)
+    if not dates:
+        raise ValueError("trend_plot requires at least one data point")
 
-    dates = [point.recorded_at for point in ordered]
-    values = [point.value for point in ordered]
-
-    plt.rcParams["figure.dpi"] = 600
     fig, ax = plt.subplots(dpi=600)
-
-    sns.regplot(
-        x=[mdates.date2num(value) for value in dates],
-        y=values,
-        ax=ax,
-    )
+    sns.regplot(x=[mdates.date2num(d) for d in dates], y=values, ax=ax)
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d"))
     plt.xticks(rotation=45)
-    plt.title(title or metric_name)
+    if title:
+        plt.title(title)
 
-    if goal_value is not None:
-        ax.axhline(
-            y=goal_value,
-            color="red",
-            linestyle="--",
-            linewidth=2,
-            label=f"Goal: {goal_value}",
-        )
+    if goal is not None:
+        ax.axhline(y=goal, color="red", linestyle="--", linewidth=2, label=f"Goal: {goal}")
         plt.legend(loc="best")
 
     y_min = min(values) - 1
     y_max = max(values) + 1
-    if goal_value is not None:
-        y_min = min(y_min, goal_value - 1)
-        y_max = max(y_max, goal_value + 1)
+    if goal is not None:
+        y_min = min(y_min, goal - 1)
+        y_max = max(y_max, goal + 1)
     plt.ylim(y_min, y_max)
 
     return _figure_to_png(fig)
 
 
 def calendar_heatmap(
-    metric_name: str,
-    points: Iterable[MetricPoint],
-    title: str | None = None,
+    dates: Sequence[datetime],
+    values: Sequence[float],
+    *,
+    title: str = "",
     start: datetime | None = None,
     end: datetime | None = None,
-) -> list[LabeledImage]:
-    ordered = _filter_points(points, start=start, end=end)
-    if not ordered:
-        raise ValueError("calendar_heatmap requires at least one point")
+) -> list[tuple[str, bytes]]:
+    """Calendar heatmap. Returns list of (label, png_bytes) tuples.
 
-    dates = [point.recorded_at for point in ordered]
-    values = [point.value for point in ordered]
-    years = sorted({point.recorded_at.year for point in ordered})
-    months = {(point.recorded_at.year, point.recorded_at.month) for point in ordered}
+    Automatically splits into one image per calendar year when data
+    spans multiple years.
+    """
+    dates, values = _filter_by_range(dates, values, start, end)
+    if not dates:
+        raise ValueError("calendar_heatmap requires at least one data point")
+
+    years = sorted({d.year for d in dates})
+    months = {(d.year, d.month) for d in dates}
     cmap = "RdYlGn"
-
-    display_name = title or metric_name
+    display = title or "heatmap"
 
     if len(months) == 1:
-        only_month = dates[0].month
         fig = july.month_plot(
-            dates,
-            values,
-            month=only_month,
+            dates, values,
+            month=dates[0].month,
             value_label=True,
-            title=display_name,
+            title=display,
             titlesize="small",
             dpi=600,
             cmap=cmap,
         )
-        return [LabeledImage(label=metric_name, image_bytes=_figure_to_png(fig))]
+        return [(display, _figure_to_png(fig))]
 
     if len(years) == 1:
         fig = july.calendar_plot(
-            dates,
-            values,
+            dates, values,
             dpi=300,
             value_label=True,
             cmap=cmap,
-            title=display_name,
+            title=display,
         )
-        return [LabeledImage(label=metric_name, image_bytes=_figure_to_png(fig))]
+        return [(display, _figure_to_png(fig))]
 
-    images: list[LabeledImage] = []
+    images: list[tuple[str, bytes]] = []
     for year in years:
-        year_dates = [point.recorded_at for point in ordered if point.recorded_at.year == year]
-        year_values = [point.value for point in ordered if point.recorded_at.year == year]
+        yd = [d for d in dates if d.year == year]
+        yv = [v for d, v in zip(dates, values) if d.year == year]
+        label = f"{display} ({year})"
         fig = july.calendar_plot(
-            year_dates,
-            year_values,
+            yd, yv,
             dpi=300,
             value_label=True,
             cmap=cmap,
-            title=f"{display_name} ({year})",
+            title=label,
         )
-        images.append(LabeledImage(label=f"{metric_name}_{year}", image_bytes=_figure_to_png(fig)))
+        images.append((label, _figure_to_png(fig)))
     return images
-
-
-def plot_bundle(
-    metric_name: str,
-    points: Iterable[MetricPoint],
-    goal_value: float | None = None,
-    title: str | None = None,
-    start: datetime | None = None,
-    end: datetime | None = None,
-) -> dict[str, object]:
-    ordered = _filter_points(points, start=start, end=end)
-    return {
-        "trend": trend_plot(metric_name=metric_name, points=ordered, goal_value=goal_value, title=title),
-        "heatmaps": calendar_heatmap(metric_name=metric_name, points=ordered, title=title),
-    }
-
-
-def metric_points_from_json(payload: str | dict[str, object]) -> dict:
-    data = json.loads(payload) if isinstance(payload, str) else payload
-    metric_name = str(data["metric_name"])
-    goal_value = data.get("goal_value")
-    raw_points = data["points"]
-
-    points = [
-        MetricPoint(
-            recorded_at=datetime.fromisoformat(item["recorded_at"]),
-            value=float(item["value"]),
-        )
-        for item in raw_points
-    ]
-    result = {
-        "metric_name": metric_name,
-        "points": points,
-        "goal_value": float(goal_value) if goal_value is not None else None,
-    }
-    if "title" in data:
-        result["title"] = str(data["title"])
-    if "start" in data:
-        result["start"] = datetime.fromisoformat(data["start"])
-    if "end" in data:
-        result["end"] = datetime.fromisoformat(data["end"])
-    return result
-
-
-def main():
-    parser = argparse.ArgumentParser(description="Generate metric trend and heatmap plots")
-    parser.add_argument("input_json", help="Path to input JSON payload")
-    parser.add_argument("--outdir", default="out", help="Directory to write PNG files into")
-    args = parser.parse_args()
-
-    payload = json.loads(Path(args.input_json).read_text())
-    parsed = metric_points_from_json(payload)
-    bundle = plot_bundle(**parsed)
-
-    outdir = Path(args.outdir)
-    outdir.mkdir(parents=True, exist_ok=True)
-    (outdir / "trend.png").write_bytes(bundle["trend"])
-    for image in bundle["heatmaps"]:
-        (outdir / f"{image.label}.png").write_bytes(image.image_bytes)
-
-    print(outdir)
 
 
 def _figure_to_png(fig_or_ax) -> bytes:
@@ -222,9 +139,36 @@ def _figure_to_png(fig_or_ax) -> bytes:
     fig.tight_layout()
     fig.savefig(buffer, format="png")
     buffer.seek(0)
-    image_bytes = buffer.getvalue()
+    data = buffer.getvalue()
     plt.close(fig)
-    return image_bytes
+    return data
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Generate scatter and calendar plots")
+    parser.add_argument("input_json", help="Path to input JSON file")
+    parser.add_argument("--outdir", default="out", help="Output directory (default: out)")
+    args = parser.parse_args()
+
+    data = json.loads(Path(args.input_json).read_text())
+    dates = [datetime.fromisoformat(p["date"]) for p in data["points"]]
+    values = [float(p["value"]) for p in data["points"]]
+    title = data.get("title", "")
+    goal = data.get("goal")
+    start = datetime.fromisoformat(data["start"]) if "start" in data else None
+    end = datetime.fromisoformat(data["end"]) if "end" in data else None
+
+    outdir = Path(args.outdir)
+    outdir.mkdir(parents=True, exist_ok=True)
+
+    trend_bytes = trend_plot(dates, values, title=title, goal=goal, start=start, end=end)
+    (outdir / "trend.png").write_bytes(trend_bytes)
+
+    for label, png in calendar_heatmap(dates, values, title=title, start=start, end=end):
+        safe_name = label.replace(" ", "_").replace("(", "").replace(")", "")
+        (outdir / f"{safe_name}.png").write_bytes(png)
+
+    print(outdir)
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 # Scattercal
 
-Opinionated metric visualization: scatter plots with trendlines and calendar heatmaps, from simple x/y data.
+Opinionated metric visualization: scatter plots with trendlines and calendar heatmaps, from simple date/value data.
 
 ## Why not just use seaborn / july directly?
 
@@ -15,7 +15,7 @@ Both are great libraries, but every time you want a "quick metric plot" you end 
 - Choose month-plot vs calendar-plot based on data span
 - Serialize figures to PNG bytes and clean up
 
-metric-plotter wraps all of that into two function calls (`trend_plot` and `calendar_heatmap`) that accept the same simple inputs and always do the right thing.
+Scattercal wraps all of that into two functions (`trend_plot` and `calendar_heatmap`) that accept plain lists of dates and values.
 
 ## Install
 
@@ -25,128 +25,111 @@ pip install matplotlib seaborn july
 
 ## API
 
-### `MetricPoint(recorded_at: datetime, value: float)`
+### `trend_plot(dates, values, *, title="", goal=None, start=None, end=None) -> bytes`
 
-A single data point.
+Scatter plot with regression trendline. Returns PNG bytes.
 
-### `trend_plot(metric_name, points, goal_value=None, title=None, start=None, end=None) -> bytes`
+### `calendar_heatmap(dates, values, *, title="", start=None, end=None) -> list[tuple[str, bytes]]`
 
-Scatter plot with seaborn regression trendline. Returns PNG bytes.
-
-### `calendar_heatmap(metric_name, points, title=None, start=None, end=None) -> list[LabeledImage]`
-
-GitHub-style calendar heatmap. Automatically picks the right layout:
+Calendar heatmap. Returns a list of `(label, png_bytes)` tuples. Automatically picks the right layout:
 - 1 month of data: month plot
-- 1 year of data: single calendar
+- 1 year: single calendar
 - Multiple years: one calendar per year
-
-### `plot_bundle(metric_name, points, goal_value=None, title=None, start=None, end=None) -> dict`
-
-Returns both `{"trend": bytes, "heatmaps": list[LabeledImage]}` in one call.
-
-### `metric_points_from_json(payload) -> dict`
-
-Parse a JSON payload into kwargs for the other functions.
 
 ## Examples
 
 ### Scatter plot with trendline and goal
 
 ```python
-from datetime import datetime
-from plotter import MetricPoint, trend_plot
+from datetime import datetime, timedelta
+from plotter import trend_plot
 
-points = [
-    MetricPoint(datetime(2025, 1, 5), 3),
-    MetricPoint(datetime(2025, 1, 12), 4),
-    MetricPoint(datetime(2025, 2, 1), 5),
-    MetricPoint(datetime(2025, 2, 15), 4),
-    MetricPoint(datetime(2025, 3, 3), 6),
-    MetricPoint(datetime(2025, 3, 20), 7),
-]
+dates = [datetime(2025, 1, 1) + timedelta(days=d*3) for d in range(30)]
+values = [3 + d * 0.15 for d, _ in enumerate(dates)]
 
-png_bytes = trend_plot("Pullups", points, goal_value=10)
-
-with open("pullups_trend.png", "wb") as f:
-    f.write(png_bytes)
+png = trend_plot(dates, values, title="Pullups", goal=10)
+with open("scatter.png", "wb") as f:
+    f.write(png)
 ```
+
+![Scatter plot](images/scatter.png)
 
 ### 1-month heatmap
 
 ```python
 from datetime import datetime
-from plotter import MetricPoint, calendar_heatmap
+from plotter import calendar_heatmap
 
-points = [MetricPoint(datetime(2025, 3, d), d % 7 + 1) for d in range(1, 32)]
+dates = [datetime(2025, 3, d) for d in range(1, 32)]
+values = [d % 7 + 1 for d in range(1, 32)]
 
-images = calendar_heatmap("Pullups", points,
-                          start=datetime(2025, 3, 1),
-                          end=datetime(2025, 3, 31))
-for img in images:
-    with open(f"{img.label}.png", "wb") as f:
-        f.write(img.image_bytes)
+images = calendar_heatmap(dates, values, title="Pullups (March)")
 ```
+
+![1-month heatmap](images/heatmap_1m.png)
 
 ### 3-month heatmap
 
 ```python
 from datetime import datetime, timedelta
-from plotter import MetricPoint, calendar_heatmap
+from plotter import calendar_heatmap
 
 base = datetime(2025, 1, 1)
-points = [MetricPoint(base + timedelta(days=d), (d % 10) + 1) for d in range(90)]
+dates = [base + timedelta(days=d) for d in range(90)]
+values = [(d % 10) + 1 for d in range(90)]
 
-images = calendar_heatmap("Pullups", points,
-                          start=datetime(2025, 1, 1),
-                          end=datetime(2025, 3, 31))
+images = calendar_heatmap(dates, values, title="Pullups (Q1)")
 ```
+
+![3-month heatmap](images/heatmap_3m.png)
 
 ### 6-month heatmap
 
 ```python
 from datetime import datetime, timedelta
-from plotter import MetricPoint, calendar_heatmap
+from plotter import calendar_heatmap
 
 base = datetime(2025, 1, 1)
-points = [MetricPoint(base + timedelta(days=d), (d % 12) + 1) for d in range(180)]
+dates = [base + timedelta(days=d) for d in range(180)]
+values = [(d % 12) + 1 for d in range(180)]
 
-images = calendar_heatmap("Pullups", points,
-                          start=datetime(2025, 1, 1),
-                          end=datetime(2025, 6, 30))
+images = calendar_heatmap(dates, values, title="Pullups (H1)")
 ```
+
+![6-month heatmap](images/heatmap_6m.png)
 
 ### 12-month heatmap
 
 ```python
 from datetime import datetime, timedelta
-from plotter import MetricPoint, calendar_heatmap
+from plotter import calendar_heatmap
 
 base = datetime(2025, 1, 1)
-points = [MetricPoint(base + timedelta(days=d), (d % 15) + 1) for d in range(365)]
+dates = [base + timedelta(days=d) for d in range(365)]
+values = [(d % 15) + 1 for d in range(365)]
 
-images = calendar_heatmap("Pullups", points,
-                          start=datetime(2025, 1, 1),
-                          end=datetime(2025, 12, 31))
+images = calendar_heatmap(dates, values, title="Pullups (2025)")
 # Returns 1 image (single year)
 ```
+
+![12-month heatmap](images/heatmap_12m.png)
 
 ### 24-month heatmap (auto-splits by year)
 
 ```python
 from datetime import datetime, timedelta
-from plotter import MetricPoint, calendar_heatmap
+from plotter import calendar_heatmap
 
 base = datetime(2024, 1, 1)
-points = [MetricPoint(base + timedelta(days=d), (d % 15) + 1) for d in range(730)]
+dates = [base + timedelta(days=d) for d in range(730)]
+values = [(d % 15) + 1 for d in range(730)]
 
-images = calendar_heatmap("Pullups", points,
-                          start=datetime(2024, 1, 1),
-                          end=datetime(2025, 12, 31))
-# Returns 2 images: "Pullups (2024)" and "Pullups (2025)"
-for img in images:
-    with open(f"{img.label}.png", "wb") as f:
-        f.write(img.image_bytes)
+images = calendar_heatmap(dates, values, title="Pullups")
+# Returns 2 tuples: ("Pullups (2024)", bytes), ("Pullups (2025)", bytes)
 ```
+
+![24-month heatmap 2024](images/heatmap_24m_Pullups_2024.png)
+![24-month heatmap 2025](images/heatmap_24m_Pullups_2025.png)
 
 ## CLI
 
@@ -158,16 +141,15 @@ JSON shape:
 
 ```json
 {
-  "metric_name": "pullups",
-  "goal_value": 10,
-  "title": "Daily Pullups",
+  "title": "Pullups",
+  "goal": 10,
   "start": "2025-01-01",
   "end": "2025-12-31",
   "points": [
-    {"recorded_at": "2025-01-01T12:00:00", "value": 3},
-    {"recorded_at": "2025-01-02T12:00:00", "value": 4}
+    {"date": "2025-01-01T12:00:00", "value": 3},
+    {"date": "2025-01-02T12:00:00", "value": 4}
   ]
 }
 ```
 
-Only `metric_name` and `points` are required. `goal_value`, `title`, `start`, and `end` are optional.
+Only `points` is required. `title`, `goal`, `start`, and `end` are optional.
