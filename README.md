@@ -43,13 +43,14 @@ Calendar heatmap. Returns a list of `(label, png_bytes)` tuples. Automatically p
 ```python
 from datetime import datetime, timedelta
 from plotter import trend_plot
+import random
 
-dates = [datetime(2025, 1, 1) + timedelta(days=d*3) for d in range(30)]
-values = [3 + d * 0.15 for d, _ in enumerate(dates)]
+random.seed(42)
+dates = [datetime(2025, 1, 1) + timedelta(days=d*3) for d in range(30)
+         if random.random() > 0.3]
+values = [3 + i * 0.4 + random.uniform(-2, 2) for i in range(len(dates))]
 
 png = trend_plot(dates, values, title="Pullups", goal=10)
-with open("scatter.png", "wb") as f:
-    f.write(png)
 ```
 
 ![Scatter plot](images/scatter.png)
@@ -59,9 +60,11 @@ with open("scatter.png", "wb") as f:
 ```python
 from datetime import datetime
 from plotter import calendar_heatmap
+import random
 
-dates = [datetime(2025, 3, d) for d in range(1, 32)]
-values = [d % 7 + 1 for d in range(1, 32)]
+random.seed(7)
+dates = [datetime(2025, 3, d) for d in range(1, 32) if random.random() > 0.2]
+values = [random.randint(2, 8) for _ in dates]
 
 images = calendar_heatmap(dates, values, title="Pullups (March)")
 ```
@@ -73,10 +76,12 @@ images = calendar_heatmap(dates, values, title="Pullups (March)")
 ```python
 from datetime import datetime, timedelta
 from plotter import calendar_heatmap
+import random
 
+random.seed(7)
 base = datetime(2025, 1, 1)
-dates = [base + timedelta(days=d) for d in range(90)]
-values = [(d % 10) + 1 for d in range(90)]
+dates = [base + timedelta(days=d) for d in range(90) if random.random() > 0.25]
+values = [random.randint(2, 10) for _ in dates]
 
 images = calendar_heatmap(dates, values, title="Pullups (Q1)")
 ```
@@ -88,10 +93,12 @@ images = calendar_heatmap(dates, values, title="Pullups (Q1)")
 ```python
 from datetime import datetime, timedelta
 from plotter import calendar_heatmap
+import random
 
+random.seed(7)
 base = datetime(2025, 1, 1)
-dates = [base + timedelta(days=d) for d in range(180)]
-values = [(d % 12) + 1 for d in range(180)]
+dates = [base + timedelta(days=d) for d in range(180) if random.random() > 0.25]
+values = [random.randint(1, 12) for _ in dates]
 
 images = calendar_heatmap(dates, values, title="Pullups (H1)")
 ```
@@ -103,10 +110,12 @@ images = calendar_heatmap(dates, values, title="Pullups (H1)")
 ```python
 from datetime import datetime, timedelta
 from plotter import calendar_heatmap
+import random
 
+random.seed(7)
 base = datetime(2025, 1, 1)
-dates = [base + timedelta(days=d) for d in range(365)]
-values = [(d % 15) + 1 for d in range(365)]
+dates = [base + timedelta(days=d) for d in range(365) if random.random() > 0.3]
+values = [random.randint(1, 15) for _ in dates]
 
 images = calendar_heatmap(dates, values, title="Pullups (2025)")
 # Returns 1 image (single year)
@@ -114,15 +123,38 @@ images = calendar_heatmap(dates, values, title="Pullups (2025)")
 
 ![12-month heatmap](images/heatmap_12m.png)
 
+### 12-month heatmap starting mid-year (auto-splits by calendar year)
+
+When your 12-month window crosses a year boundary (e.g. Jul 2024 - Jun 2025), Scattercal automatically splits into one calendar per year:
+
+```python
+from datetime import datetime, timedelta
+from plotter import calendar_heatmap
+import random
+
+random.seed(7)
+base = datetime(2024, 7, 1)
+dates = [base + timedelta(days=d) for d in range(365) if random.random() > 0.3]
+values = [random.randint(2, 12) for _ in dates]
+
+images = calendar_heatmap(dates, values, title="Pullups")
+# Returns 2 images: "Pullups (2024)" and "Pullups (2025)"
+```
+
+![12-month mid-year 2024](images/heatmap_12m_mid_Pullups_2024.png)
+![12-month mid-year 2025](images/heatmap_12m_mid_Pullups_2025.png)
+
 ### 24-month heatmap (auto-splits by year)
 
 ```python
 from datetime import datetime, timedelta
 from plotter import calendar_heatmap
+import random
 
+random.seed(7)
 base = datetime(2024, 1, 1)
-dates = [base + timedelta(days=d) for d in range(730)]
-values = [(d % 15) + 1 for d in range(730)]
+dates = [base + timedelta(days=d) for d in range(730) if random.random() > 0.3]
+values = [random.randint(1, 15) for _ in dates]
 
 images = calendar_heatmap(dates, values, title="Pullups")
 # Returns 2 tuples: ("Pullups (2024)", bytes), ("Pullups (2025)", bytes)

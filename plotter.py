@@ -108,7 +108,8 @@ def calendar_heatmap(
             cmap=cmap,
             title=display,
         )
-        return [(display, _figure_to_png(fig))]
+        _fix_calendar_title_spacing(fig)
+        return [(display, _figure_to_png(fig, use_tight_layout=False))]
 
     images: list[tuple[str, bytes]] = []
     for year in years:
@@ -122,11 +123,27 @@ def calendar_heatmap(
             cmap=cmap,
             title=label,
         )
-        images.append((label, _figure_to_png(fig)))
+        _fix_calendar_title_spacing(fig)
+        images.append((label, _figure_to_png(fig, use_tight_layout=False)))
     return images
 
 
-def _figure_to_png(fig_or_ax) -> bytes:
+def _fix_calendar_title_spacing(fig_or_ax) -> None:
+    """Push title up and add space between title and month grids."""
+    import numpy as np
+
+    if isinstance(fig_or_ax, np.ndarray):
+        fig = fig_or_ax.flat[0].figure
+    elif hasattr(fig_or_ax, "figure"):
+        fig = fig_or_ax.figure
+    else:
+        fig = fig_or_ax
+    fig.subplots_adjust(top=0.72)
+    for txt in fig.texts:
+        txt.set_y(0.98)
+
+
+def _figure_to_png(fig_or_ax, *, use_tight_layout: bool = True) -> bytes:
     import numpy as np
 
     if isinstance(fig_or_ax, np.ndarray):
@@ -136,7 +153,8 @@ def _figure_to_png(fig_or_ax) -> bytes:
     else:
         fig = fig_or_ax
     buffer = BytesIO()
-    fig.tight_layout()
+    if use_tight_layout:
+        fig.tight_layout()
     fig.savefig(buffer, format="png")
     buffer.seek(0)
     data = buffer.getvalue()
