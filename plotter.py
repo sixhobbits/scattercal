@@ -138,9 +138,12 @@ def _fix_calendar_title_spacing(fig_or_ax) -> None:
         fig = fig_or_ax.figure
     else:
         fig = fig_or_ax
-    fig.subplots_adjust(top=0.72)
+    nrows = len({ax.get_subplotspec().rowspan.start for ax in fig.axes})
+    # more rows need less top margin since the title is proportionally smaller
+    top = {1: 0.72, 2: 0.78, 3: 0.88}.get(nrows, 0.85)
+    fig.subplots_adjust(top=top)
     for txt in fig.texts:
-        txt.set_y(0.98)
+        txt.set_y(1.0)
 
 
 def _figure_to_png(fig_or_ax, *, use_tight_layout: bool = True) -> bytes:
