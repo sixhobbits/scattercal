@@ -25,13 +25,9 @@ pip install matplotlib seaborn july
 
 ## API
 
-### `trend_plot(dates, values, *, title="", goal=None, start=None, end=None) -> bytes`
+**`trend_plot(dates, values, *, title="", goal=None, start=None, end=None) -> bytes`** — Scatter plot with regression trendline. Returns PNG bytes.
 
-Scatter plot with regression trendline. Returns PNG bytes.
-
-### `calendar_heatmap(dates, values, *, title="", start=None, end=None) -> list[tuple[str, bytes]]`
-
-Calendar heatmap. Returns a list of `(label, png_bytes)` tuples. Automatically picks the right layout:
+**`calendar_heatmap(dates, values, *, title="", start=None, end=None) -> list[tuple[str, bytes]]`** — Calendar heatmap. Returns a list of `(label, png_bytes)` tuples. Automatically picks the right layout:
 - 1 month of data: month plot
 - 1 year: single calendar
 - Multiple years: one calendar per year
