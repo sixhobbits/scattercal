@@ -86,7 +86,7 @@ def calendar_heatmap(
     years = sorted({d.year for d in dates})
     months = {(d.year, d.month) for d in dates}
     cmap = "RdYlGn"
-    display = title or "heatmap"
+    display = title
 
     if len(months) == 1:
         fig = july.month_plot(
@@ -98,7 +98,7 @@ def calendar_heatmap(
             dpi=600,
             cmap=cmap,
         )
-        return [(display, _figure_to_png(fig))]
+        return [(display or "heatmap", _figure_to_png(fig))]
 
     if len(years) == 1:
         fig = july.calendar_plot(
@@ -108,14 +108,15 @@ def calendar_heatmap(
             cmap=cmap,
             title=display,
         )
-        _fix_calendar_title_spacing(fig)
-        return [(display, _figure_to_png(fig, use_tight_layout=False))]
+        if display:
+            _fix_calendar_title_spacing(fig)
+        return [(display or "heatmap", _figure_to_png(fig, use_tight_layout=False))]
 
     images: list[tuple[str, bytes]] = []
     for year in years:
         yd = [d for d in dates if d.year == year]
         yv = [v for d, v in zip(dates, values) if d.year == year]
-        label = f"{display} ({year})"
+        label = f"{display} ({year})" if display else str(year)
         fig = july.calendar_plot(
             yd, yv,
             dpi=300,

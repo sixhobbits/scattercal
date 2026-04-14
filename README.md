@@ -62,7 +62,7 @@ random.seed(7)
 dates = [datetime(2025, 3, d) for d in range(1, 32) if random.random() > 0.2]
 values = [random.randint(2, 8) for _ in dates]
 
-images = calendar_heatmap(dates, values, title="Pullups (March)")
+images = calendar_heatmap(dates, values)
 ```
 
 ![1-month heatmap](images/heatmap_1m.png)
